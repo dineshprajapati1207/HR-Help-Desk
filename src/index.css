@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root { color-scheme: light; }
+html, body, #root { height: 100%; }
+body { @apply bg-paper text-navy antialiased; font-feature-settings: "tnum" 1; }
+:focus-visible { outline: 2px solid #EE5A24; outline-offset: 2px; }
+.prose-hr p { @apply mb-2 leading-relaxed; }
+.prose-hr ul { @apply list-disc pl-5 mb-2 space-y-1; }
+.prose-hr ol { @apply list-decimal pl-5 mb-2 space-y-1; }
+.prose-hr strong { @apply font-semibold text-navy; }
+.prose-hr h1, .prose-hr h2, .prose-hr h3 { @apply font-bold mt-3 mb-1; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  body { background: white; }
+}

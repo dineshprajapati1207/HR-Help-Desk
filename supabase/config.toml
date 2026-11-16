@@ -1,0 +1,9 @@
+# Edge functions are called with the anon key from the browser; access control is inside each function.
+[functions.chat]
+verify_jwt = false
+[functions.public]
+verify_jwt = false
+[functions.draft-email]
+verify_jwt = false
+[functions.admin]
+verify_jwt = false
