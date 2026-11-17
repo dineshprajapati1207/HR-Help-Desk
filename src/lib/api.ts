@@ -29,7 +29,7 @@ export const employeeApi = <T = any>(action: string, payload: Record<string, unk
 export const adminApi = <T = any>(action: string, payload: Record<string, unknown> = {}) =>
   call<T>("admin", { action, ...payload });
 
-export type Source = { chunk_id: string; policy_id: string; policy_name: string; category: string; version: string; effective_date: string | null; last_updated: string | null; section: string | null; excerpt: string };
+export type Source = { chunk_id: string; policy_id: string; policy_name: string; category: string; version: string; effective_date: string | null; last_updated: string | null; section: string | null; excerpt: string; kind?: "qa" | "policy" };
 export type Contact = { id: string; name: string; phone: string | null; email: string | null; department: string | null; escalation_category: string; availability: string | null; is_default?: boolean };
 export type ChatReply = { session_id: string; message_id: string; answer: string; confidence: "high" | "medium" | "low"; sources: Source[]; related_questions: string[]; unanswered_parts: string; topic: string; contact: Contact | null; is_posh: boolean };
 

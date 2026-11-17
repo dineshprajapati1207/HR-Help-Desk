@@ -22,7 +22,7 @@ export default function PolicyPage() {
   useEffect(() => {
     setPolicy(undefined); setFaqs(null);
     view("public_policies", (x) => x.eq("id", id)).then((r) => setPolicy(r[0] ?? null)).catch(() => setPolicy(null));
-    view("public_faqs", (x) => x.eq("policy_id", id).order("view_count", { ascending: false })).then(setFaqs).catch(() => setFaqs([]));
+    view("public_faqs", (x) => x.eq("policy_id", id).order("sort_order", { ascending: true, nullsFirst: false }).order("view_count", { ascending: false })).then(setFaqs).catch(() => setFaqs([]));
   }, [id]);
 
   const c = policyColor(policy?.name);
@@ -67,6 +67,7 @@ export default function PolicyPage() {
           <Card className="divide-y divide-slate-100 overflow-hidden">
             {list.map((f, i) => (
               <div key={f.id}>
+                {f.section && f.section !== list[i - 1]?.section && <p className="px-4 py-2 text-xs font-bold uppercase tracking-wide bg-paper text-navy-3">{f.section}</p>}
                 <button onClick={() => toggle(f)} className="w-full text-left px-4 py-3.5 flex items-start gap-3 hover:bg-slate-50" aria-expanded={openId === f.id}>
                   <span className="h-6 w-6 rounded-full text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5" style={{ background: c.soft, color: c.dark }}>{i + 1}</span>
                   <span className="flex-1 font-semibold text-[15px]">{f.question}</span>

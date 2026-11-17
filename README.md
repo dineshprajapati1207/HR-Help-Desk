@@ -89,7 +89,12 @@ src/pages/employee, src/pages/admin   the two portals
 - Legacy `.doc` uses a fallback reader; check the extracted text before publishing.
 - Calculator results are logged with the rule version used (Calculator Management → Calculation history).
 
-## 7. What changed in this version
+## 7. Q&A first, then the policy
+
+Answer order for every employee question: (1) an approved Q&A that matches, answered exactly as written; (2) the exact sentences of the relevant policy; (3) otherwise "For this information, please contact HR. If you would like the HR contact details, I can share them with you." The HR details (Apurv Christian, number, email) are shown only after the employee says yes.
+Admin > Policy Management > **Import Q&A** loads the 1,560 ready-made Q&As (`src/data/qaBundle.json`) into the matching policies. **Delete** on a policy removes it permanently (type DELETE to confirm).
+
+## 8. What changed in this version
 
 - New employee layout: top bar (Menu, Back, Home, Admin for admins only, search), colourful policy tiles with question count and version, tiles for PL & Gratuity, Income Tax and Contact HR.
 - Employees do not see or download the full policy document; they get its questions, answers and chat answers only.
@@ -100,4 +105,3 @@ src/pages/employee, src/pages/admin   the two portals
 - Contact HR page with the draft-email form (edit, copy, open in email app; never sent automatically).
 
 After pulling this version run `npx supabase db push --linked` (adds FY 2026-27 rules) and `npx supabase functions deploy admin chat public draft-email`.
-"# HR-Help-Desk" 

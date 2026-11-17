@@ -10,9 +10,9 @@ import { fmtDate, cn } from "@/lib/format";
 type Msg = { id?: string; role: "user" | "assistant"; content: string; confidence?: "high" | "medium" | "low"; sources?: Source[]; related_questions?: string[]; unanswered_parts?: string | null; contact?: Contact | null; feedback?: boolean; pending?: boolean };
 
 const CONF = {
-  high: { label: "Answer found in the official Petpooja policy.", icon: CheckCircle2, cls: "text-emerald-700 bg-emerald-50" },
+  high: { label: "Answer found in the official Petpooja Q&A / policy.", icon: CheckCircle2, cls: "text-emerald-700 bg-emerald-50" },
   medium: { label: "Here is the closest information available in the policy.", icon: HelpCircle, cls: "text-amber-800 bg-amber-50" },
-  low: { label: "I couldn't find sufficiently reliable information in the approved knowledge library.", icon: AlertCircle, cls: "text-red-700 bg-red-50" },
+  low: { label: "Not available in the approved Q&A or policy.", icon: AlertCircle, cls: "text-red-700 bg-red-50" },
 };
 
 export default function Ask() {
@@ -107,8 +107,14 @@ export default function Ask() {
             <div key={i} className="max-w-[92%]">
               {m.pending ? <Card className="p-4 text-sm text-navy-3 flex items-center gap-2"><span className="h-2 w-2 rounded-full bg-brand animate-pulse" />Searching the policy library…</Card> : (
                 <Card className="p-5">
-                  {m.confidence && (() => { const c = CONF[m.confidence]; return <p className={cn("inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-1 mb-3", c.cls)}><c.icon className="h-3.5 w-3.5" />{c.label}</p>; })()}
-                  {m.confidence !== "low" ? <Md>{m.content}</Md> : <p className="text-[15px]">I couldn't find this information in the current Petpooja knowledge library.</p>}
+                  {m.confidence && (m.confidence === "low" || !!m.sources?.length) && (() => { const c = CONF[m.confidence]; return <p className={cn("inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-2.5 py-1 mb-3", c.cls)}><c.icon className="h-3.5 w-3.5" />{c.label}</p>; })()}
+                  <Md>{m.content}</Md>
+                  {i === msgs.length - 1 && m.content.startsWith("For this information, please contact HR") && (
+                    <div className="mt-3 flex flex-wrap gap-2 no-print">
+                      <Button size="sm" disabled={busy} onClick={() => send("Yes, please share the HR contact details")}>Yes, share HR contact details</Button>
+                      <Button size="sm" variant="secondary" disabled={busy} onClick={() => send("No, thanks")}>No, thanks</Button>
+                    </div>
+                  )}
                   {m.unanswered_parts && m.confidence !== "low" && <div className="mt-3 text-sm rounded-lg bg-amber-50 px-3 py-2"><span className="font-semibold">Not covered by the policy: </span>{m.unanswered_parts}</div>}
                   {!!m.sources?.length && (
                     <div className="mt-4 space-y-2">
@@ -118,15 +124,14 @@ export default function Ask() {
                           <div className="flex gap-3">
                             <FileText className="h-4 w-4 text-brand mt-0.5 shrink-0" />
                             <span className="text-sm"><span className="font-semibold">{s.policy_name}</span>{s.section ? <span className="text-navy-3">, {s.section}</span> : null}
-                              <span className="block text-xs text-navy-3">{s.version}{s.last_updated ? `, last updated ${fmtDate(s.last_updated)}` : ""}{s.effective_date ? `, effective ${fmtDate(s.effective_date)}` : ""}</span></span>
+                              <span className="block text-xs text-navy-3">{s.kind === "qa" ? "Approved Q&A" : <>{s.version}{s.last_updated ? `, last updated ${fmtDate(s.last_updated)}` : ""}{s.effective_date ? `, effective ${fmtDate(s.effective_date)}` : ""}</>}</span></span>
                           </div>
-                          <p className="text-[11px] font-semibold text-navy-3 mt-2 ml-7">Exact text from the policy</p>
+                          <p className="text-[11px] font-semibold text-navy-3 mt-2 ml-7">{s.kind === "qa" ? "Answer exactly as written in the Q&A" : "Exact text from the policy"}</p>
                           <div className="mt-1 ml-7 border-l-4 border-brand-line pl-3 text-sm whitespace-pre-wrap leading-relaxed">{s.excerpt}</div>
                         </div>
                       ))}
                     </div>
                   )}
-                  {m.contact && m.confidence !== "high" && <div className="mt-4"><p className="text-sm text-navy-3 mb-2">{fallbackMsg}</p><ContactCard compact contact={m.contact} topic={lastUser} /></div>}
                   {!!m.related_questions?.length && (
                     <div className="mt-4"><p className="text-xs font-semibold text-navy-3 mb-1.5">Related questions</p>
                       <div className="flex flex-wrap gap-2">{m.related_questions.map((q) => <button key={q} onClick={() => send(q)} className="text-sm rounded-full bg-slate-100 px-3 py-1 hover:bg-brand-soft">{q}</button>)}</div></div>
@@ -151,7 +156,7 @@ export default function Ask() {
             className="w-full resize-none rounded-2xl bg-white border border-slate-200 px-4 py-3.5 pr-14 outline-none focus:border-brand focus:ring-2 focus:ring-brand/15" />
           <button type="submit" disabled={busy || !input.trim()} aria-label="Send" className="absolute right-2.5 bottom-3 h-9 w-9 rounded-xl bg-brand text-white flex items-center justify-center disabled:opacity-40"><ArrowUp className="h-5 w-5" /></button>
         </form>
-        <p className="text-[11px] text-navy-3 mt-1.5 text-center">PeopleHub AI answers only from approved Petpooja documents. Check important decisions with HR.</p>
+        <p className="text-[11px] text-navy-3 mt-1.5 text-center">Answers come only from the approved Petpooja Q&A and policy documents. Check important decisions with HR.</p>
       </div>
 
     </div>

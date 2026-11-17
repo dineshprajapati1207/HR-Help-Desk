@@ -195,12 +195,16 @@ export function buildFaqs(policyTitle: string, text: string, target: number): Fa
 
 // ---------- answering ----------
 export type ChunkHit = { content: string; section?: string | null; score: number };
-const SYN_GROUPS = [["salary", "pay", "wage", "ctc", "gross", "remuneration"], ["resign", "resignation", "quit", "exit", "separation"], ["leave", "holiday", "absence"], ["loan", "advance"],
-  ["wfh", "remote"], ["probation", "probationary"], ["reimburse", "reimbursement", "refund", "claim"], ["manager", "supervisor"], ["increment", "hike", "raise", "appraisal"],
-  ["terminate", "termination", "dismiss"], ["refer", "referral"], ["late", "delay", "tardy"], ["attendance", "punch", "present"], ["relocation", "relocate", "shift"]];
+const SYN_GROUPS = [["salary", "pay", "wage", "ctc", "gross", "remuneration"], ["resign", "resignation", "quit", "exit", "separation"], ["leave", "holiday", "absence"], ["wfh", "remote"], ["probation", "probationary"], ["reimburse", "reimbursement", "refund", "claim"], ["manager", "supervisor"], ["increment", "hike", "raise", "appraisal"],
+  ["terminate", "termination", "dismiss"], ["refer", "referral"], ["late", "delay", "tardy"]]; // (only words that mean the same thing; policy topics such as loan / salary advance / relocation stay separate)
 const synMap = new Map<string, Set<string>>();
 for (const g of SYN_GROUPS) { const st = new Set(g.map(stem)); for (const x of st) synMap.set(x, st); }
 const has = (set: Set<string>, t: string) => set.has(t) || [...(synMap.get(t) ?? [])].some((x) => set.has(x));
+
+/** For matching a question with a stored Q&A question: keeps words like how/much/when/who/can, which carry the meaning of a question,
+ *  and reduces words to a common form (stem + synonym group) so "quit" and "resign" match. */
+const KEEP_Q = new Set(["how", "what", "which", "who", "whom", "when", "where", "why", "much", "many", "long", "can", "not", "no", "if", "happen", "happens", "happened"]);
+export const canon = (q: string) => [...new Set((q.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => w.length > 1 && (KEEP_Q.has(w) || !STOP.has(w))).map(stem).map((t) => [...(synMap.get(t) ?? [t])][0]))];
 
 /** Reads every sentence of the given policy text and returns the ones that answer the question, word for word. */
 export function extractAnswer(question: string, chunks: ChunkHit[], opts: { scan?: boolean } = {}) {

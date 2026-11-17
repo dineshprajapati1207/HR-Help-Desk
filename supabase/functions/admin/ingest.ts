@@ -165,7 +165,7 @@ export async function generateFaqs(db: SupabaseClient, versionId: string) {
 export async function embedFaqs(db: SupabaseClient, versionId: string) {
   const { data: todo } = await db.from("faqs").select("id,question,short_answer").eq("version_id", versionId).is("embedding", null).limit(3);
   if (todo?.length) {
-    const vecs = await embed(todo.map((f) => `${f.question}\n${f.short_answer ?? ""}`));
+    const vecs = await embed(todo.map((f) => f.question)); // questions only, so they match employees' questions
     for (let i = 0; i < todo.length; i++) await db.from("faqs").update({ embedding: toVector(vecs[i]) }).eq("id", todo[i].id);
   }
   const { count } = await db.from("faqs").select("id", { count: "exact", head: true }).eq("version_id", versionId).is("embedding", null);

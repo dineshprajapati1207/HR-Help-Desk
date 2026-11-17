@@ -1,7 +1,8 @@
 import { embedFaqsFor } from "./pipeline";
+import { QaImportDialog } from "./QaImport";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Upload, Sparkles, ListChecks, History, Archive, Power, Pencil, GitCompare, RotateCcw } from "lucide-react";
+import { Upload, Sparkles, ListChecks, History, Archive, Power, Pencil, GitCompare, RotateCcw, Trash2, FileUp } from "lucide-react";
 import { Badge, Button, Card, Confirm, Empty, Field, Input, Modal, PageHeader, Select, Skeleton, Textarea, statusTone } from "@/components/ui";
 import { Md } from "@/components/Shared";
 import { useAdmin, run } from "./common";
@@ -18,6 +19,10 @@ export default function Policies() {
   const [versions, setVersions] = useState<any>(null);
   const [edit, setEdit] = useState<any>(null);
   const [gen, setGen] = useState<string | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [del, setDel] = useState<any>(null);
+  const [delText, setDelText] = useState("");
+  const [deleting, setDeleting] = useState(false);
   const list = (data?.policies ?? []).filter((p) => filter === "all" ? p.status !== "archived" : p.status === filter);
 
   const generate = async (p: any) => {
@@ -32,7 +37,7 @@ export default function Policies() {
   return (
     <div>
       <PageHeader title="Policy Management" text="Control which policies employees and the assistant can use. Deactivated and archived policies never appear in new AI answers."
-        actions={<Select className="w-44" value={filter} onChange={(e) => setFilter(e.target.value)}><option value="all">All current</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="draft">Awaiting approval</option><option value="archived">Archived</option></Select>} />
+        actions={<div className="flex gap-2"><Button variant="secondary" onClick={() => setImportOpen(true)}><FileUp className="h-4 w-4" />Import Q&A</Button><Select className="w-44" value={filter} onChange={(e) => setFilter(e.target.value)}><option value="all">All current</option><option value="active">Active</option><option value="inactive">Inactive</option><option value="draft">Awaiting approval</option><option value="archived">Archived</option></Select></div>} />
       {loading && !data ? <div className="space-y-3">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-28" />)}</div>
         : list.length === 0 ? <Card><Empty title="No policies in this view" text="Upload documents in Document Management to create policies." /></Card>
         : <div className="space-y-3">{list.map((p) => (
@@ -49,6 +54,7 @@ export default function Policies() {
               <Button size="sm" variant="secondary" loading={gen === p.id} disabled={!p.current_version_id} onClick={() => generate(p)}><Sparkles className="h-4 w-4" />Generate FAQs</Button>
               <Button size="sm" variant="secondary" onClick={() => setQa(p)}><ListChecks className="h-4 w-4" />Edit Q&A</Button>
               <Button size="sm" variant="secondary" onClick={() => setVersions(p)}><History className="h-4 w-4" />Versions</Button>
+              <Button size="sm" variant="secondary" className="text-red-600" onClick={() => { setDel(p); setDelText(""); }}><Trash2 className="h-4 w-4" />Delete</Button>
               <Button size="sm" variant="ghost" aria-label="Edit details" onClick={() => setEdit({ ...p })}><Pencil className="h-4 w-4" /></Button>
             </div>
           </Card>))}</div>}
@@ -59,6 +65,16 @@ export default function Policies() {
           : confirm?.status === "archived" ? "The policy is removed from the employee library and AI answers. Its versions and history are kept." : "Employees and the assistant will use the current approved version."}
         confirmLabel={confirm?.status === "inactive" ? "Deactivate" : confirm?.status === "archived" ? "Archive" : "Activate"} danger={confirm?.status !== "active"}
         onConfirm={async () => { await run("set_policy_status", { policy_id: confirm!.p.id, status: confirm!.status }, "Policy updated"); setConfirm(null); reload(); }} />
+      {importOpen && <QaImportDialog policies={data?.policies ?? []} onClose={() => { setImportOpen(false); reload(); }} />}
+      {del && <Modal open onClose={() => setDel(null)} title="Delete policy permanently?"
+        footer={<><Button variant="secondary" onClick={() => setDel(null)}>Cancel</Button><Button variant="danger" loading={deleting} disabled={delText.trim().toLowerCase() !== "delete"}
+          onClick={async () => { setDeleting(true); const r = await run("delete_policy", { policy_id: del.id }, "Policy deleted"); setDeleting(false); if (r) { setDel(null); reload(); } }}>Delete forever</Button></>}>
+        <div className="space-y-3 text-sm">
+          <p><b>{del.name}</b> will be removed for good: the policy, all its versions, its text, all its Q&As and the uploaded files. Employees will no longer see it and this cannot be undone.</p>
+          <p className="text-navy-3">If you only want to hide it from employees, use Deactivate or Archive instead.</p>
+          <Field label="Type DELETE to confirm"><Input value={delText} onChange={(e) => setDelText(e.target.value)} placeholder="DELETE" /></Field>
+        </div>
+      </Modal>}
       {qa && <Modal open onClose={() => { setQa(null); reload(); }} title={`Q&A: ${qa.name}`} wide><FaqManager policyId={qa.id} policies={data?.policies ?? []} /></Modal>}
       {versions && <VersionsDialog policy={versions} onClose={() => { setVersions(null); reload(); }} policies={data?.policies ?? []} />}
       {edit && <Modal open onClose={() => setEdit(null)} title="Edit policy details"

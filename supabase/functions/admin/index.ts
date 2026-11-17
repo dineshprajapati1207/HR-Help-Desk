@@ -230,6 +230,38 @@ Deno.serve(async (req) => {
         });
         return json({ policies: (pols ?? []).map((x) => ({ ...x, ...stat(x.id) })) });
       }
+      case "import_qa": {
+        // Loads a ready-made Q&A set into a policy. Answers are stored exactly as written. Replaces earlier automatic and imported questions; keeps ones typed by an admin.
+        const items = (Array.isArray(p.items) ? p.items : []).filter((x: any) => x?.q?.trim() && x?.a?.trim());
+        if (!p.policy_id || !items.length) return json({ error: "Choose a policy and a Q&A set." }, 400);
+        const { data: pol } = await db.from("policies").select("id,name,current_version_id").eq("id", p.policy_id).single();
+        let versionId = pol?.current_version_id ?? null;
+        if (!versionId) { const { data: v } = await db.from("document_versions").select("id").eq("policy_id", p.policy_id).order("version_number", { ascending: false }).limit(1).maybeSingle(); versionId = v?.id ?? null; }
+        if (!versionId) return json({ error: "This policy has no uploaded document yet. Upload and publish the policy first." }, 400);
+        await db.from("faqs").delete().eq("policy_id", p.policy_id).in("source", ["ai", "import"]);
+        const rows = items.map((x: any, i: number) => ({ policy_id: p.policy_id, version_id: versionId, question: String(x.q).trim(), short_answer: String(x.a).trim(), detailed_answer: null,
+          section: x.s ?? null, related_questions: [], status: "approved", source: "import", sort_order: i + 1 }));
+        for (let i = 0; i < rows.length; i += 200) { const { error } = await db.from("faqs").insert(rows.slice(i, i + 200)); if (error) throw error; }
+        await A("qa_import", "policy", p.policy_id, { name: pol?.name, count: rows.length });
+        return json({ created: rows.length, version_id: versionId });
+      }
+      case "delete_policy": {
+        // Permanent: removes the policy, all its versions, text, Q&A and the uploaded files.
+        const { data: pol } = await db.from("policies").select("id,name").eq("id", p.policy_id).maybeSingle();
+        if (!pol) return json({ error: "Policy not found." }, 404);
+        const { data: vs } = await db.from("document_versions").select("document_id").eq("policy_id", p.policy_id);
+        const { data: ds } = await db.from("documents").select("id").eq("policy_id", p.policy_id);
+        const docIds = [...new Set([...(vs ?? []).map((v) => v.document_id), ...(ds ?? []).map((d) => d.id)].filter(Boolean))] as string[];
+        const { data: files } = docIds.length ? await db.from("documents").select("storage_path").in("id", docIds) : { data: [] as { storage_path: string }[] };
+        await db.from("policies").update({ current_version_id: null }).eq("id", p.policy_id);
+        const { error } = await db.from("policies").delete().eq("id", p.policy_id); // also removes versions, text chunks, search data and Q&A
+        if (error) throw error;
+        if (docIds.length) await db.from("documents").delete().in("id", docIds);
+        const paths = (files ?? []).map((f) => f.storage_path).filter(Boolean);
+        if (paths.length) await db.storage.from("documents").remove(paths);
+        await A("policy_delete", "policy", p.policy_id, { name: pol.name });
+        return json({ ok: true });
+      }
       case "set_policy_status": {
         if (!["active", "inactive", "archived"].includes(p.status)) return json({ error: "Invalid status" }, 400);
         const { data: pol } = await db.from("policies").select("current_version_id").eq("id", p.policy_id).single();
@@ -265,7 +297,7 @@ Deno.serve(async (req) => {
       }
       case "upsert_faq": {
         if (!p.question?.trim() || !p.policy_id) return json({ error: "Question and policy are required." }, 400);
-        const [vec] = await embed([`${p.question}\n${p.short_answer ?? ""}`]);
+        const [vec] = await embed([p.question]);
         const row = { policy_id: p.policy_id, question: p.question.trim(), short_answer: p.short_answer ?? null, detailed_answer: p.detailed_answer ?? null,
           section: p.section ?? null, related_questions: p.related_questions ?? [], status: p.status ?? "approved", embedding: toVector(vec), updated_at: now() };
         let id = p.id;
