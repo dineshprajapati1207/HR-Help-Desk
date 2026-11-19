@@ -94,6 +94,8 @@ src/pages/employee, src/pages/admin   the two portals
 Answer order for every employee question: (1) an approved Q&A that matches, answered exactly as written; (2) the exact sentences of the relevant policy; (3) otherwise "For this information, please contact HR. If you would like the HR contact details, I can share them with you." The HR details (Apurv Christian, number, email) are shown only after the employee says yes.
 Admin > Policy Management > **Import Q&A** loads the 1,560 ready-made Q&As (`src/data/qaBundle.json`) into the matching policies. **Delete** on a policy removes it permanently (type DELETE to confirm).
 
+Contact HR is policy-wise: Rehire and Internal Job Transfer, Separation and Internship show their own contacts, PoSH shows the Presiding Officer / IC message, and every other policy shows Apurv Christian. The mapping is in `src/lib/policyContacts.ts`.
+
 ## 8. What changed in this version
 
 - New employee layout: top bar (Menu, Back, Home, Admin for admins only, search), colourful policy tiles with question count and version, tiles for PL & Gratuity, Income Tax and Contact HR.

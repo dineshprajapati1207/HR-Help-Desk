@@ -8,11 +8,12 @@ const STOP = new Set(("a an the and or of to in on at for from by with without a
 
 export const stem = (w: string) => {
   w = w.toLowerCase().replace(/'s$/, "");
-  if (w.length > 4 && w.endsWith("ies")) return w.slice(0, -3) + "y";
-  if (w.length > 5 && w.endsWith("ing")) return w.slice(0, -3);
-  if (w.length > 4 && w.endsWith("ed")) return w.slice(0, -2);
-  if (w.length > 4 && w.endsWith("es")) return w.slice(0, -2);
-  if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) return w.slice(0, -1);
+  if (w.length > 4 && w.endsWith("ies")) w = w.slice(0, -3) + "y";
+  else if (w.length > 5 && w.endsWith("ing")) w = w.slice(0, -3);
+  else if (w.length > 4 && w.endsWith("ed")) w = w.slice(0, -2);
+  else if (w.length > 4 && w.endsWith("es")) w = w.slice(0, -2);
+  else if (w.length > 3 && w.endsWith("s") && !w.endsWith("ss")) w = w.slice(0, -1);
+  if (w.length > 3 && w.endsWith("e")) w = w.slice(0, -1); // leave / leaves -> leav
   return w;
 };
 export const tokens = (s: string) => [...new Set((s.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => w.length > 1 && !STOP.has(w)).map(stem))];
@@ -196,7 +197,8 @@ export function buildFaqs(policyTitle: string, text: string, target: number): Fa
 // ---------- answering ----------
 export type ChunkHit = { content: string; section?: string | null; score: number };
 const SYN_GROUPS = [["salary", "pay", "wage", "ctc", "gross", "remuneration"], ["resign", "resignation", "quit", "exit", "separation"], ["leave", "holiday", "absence"], ["wfh", "remote"], ["probation", "probationary"], ["reimburse", "reimbursement", "refund", "claim"], ["manager", "supervisor"], ["increment", "hike", "raise", "appraisal"],
-  ["terminate", "termination", "dismiss"], ["refer", "referral"], ["late", "delay", "tardy"]]; // (only words that mean the same thing; policy topics such as loan / salary advance / relocation stay separate)
+  ["terminate", "termination", "dismiss"], ["refer", "referral"], ["late", "delay", "tardy"],
+  ["cl", "casual"], ["sl", "sick"], ["pl", "privilege", "earned"], ["ml", "maternity"]]; // (only words that mean the same thing; policy topics such as loan / salary advance / relocation stay separate)
 const synMap = new Map<string, Set<string>>();
 for (const g of SYN_GROUPS) { const st = new Set(g.map(stem)); for (const x of st) synMap.set(x, st); }
 const has = (set: Set<string>, t: string) => set.has(t) || [...(synMap.get(t) ?? [])].some((x) => set.has(x));
@@ -204,7 +206,8 @@ const has = (set: Set<string>, t: string) => set.has(t) || [...(synMap.get(t) ??
 /** For matching a question with a stored Q&A question: keeps words like how/much/when/who/can, which carry the meaning of a question,
  *  and reduces words to a common form (stem + synonym group) so "quit" and "resign" match. */
 const KEEP_Q = new Set(["how", "what", "which", "who", "whom", "when", "where", "why", "much", "many", "long", "can", "not", "no", "if", "happen", "happens", "happened"]);
-export const canon = (q: string) => [...new Set((q.toLowerCase().match(/[a-z0-9]+/g) ?? []).filter((w) => w.length > 1 && (KEEP_Q.has(w) || !STOP.has(w))).map(stem).map((t) => [...(synMap.get(t) ?? [t])][0]))];
+const GRANT = new Set(["get", "gets", "got", "grant", "granted", "grants", "receive", "receives", "received", "entitled", "entitle"]);
+export const canon = (q: string) => [...new Set((q.toLowerCase().match(/[a-z0-9]+/g) ?? []).map((w) => (GRANT.has(w) ? "grant" : w)).filter((w) => w.length > 1 && (KEEP_Q.has(w) || w === "grant" || !STOP.has(w))).map(stem).map((t) => [...(synMap.get(t) ?? [t])][0]))];
 
 /** Reads every sentence of the given policy text and returns the ones that answer the question, word for word. */
 export function extractAnswer(question: string, chunks: ChunkHit[], opts: { scan?: boolean } = {}) {
@@ -218,10 +221,14 @@ export function extractAnswer(question: string, chunks: ChunkHit[], opts: { scan
   // rarer words in the policy count more than words that appear everywhere (e.g. "loan" in a loan policy)
   const w = new Map(qT.map((t) => [t, Math.log(1 + pool.length / (1 + pool.filter((c) => has(c.toks, t)).length))]));
   const wTotal = [...w.values()].reduce((a, b) => a + b, 0) || 1;
+  // the most specific word(s) of the question (e.g. "CL") must appear in the sentence we answer with
+  const present = qT.filter((t) => pool.some((c) => has(c.toks, t)));
+  const maxW = Math.max(0, ...present.map((t) => w.get(t)!));
+  const keys = present.filter((t) => w.get(t)! >= maxW * 0.6);
   const numeric = /\b(how much|how many|limit|maximum|minimum|amount|days|percent|percentage|notice)\b/i.test(question);
   const scored = pool.map((c) => {
     let sc = qT.reduce((a, t) => a + (has(c.toks, t) ? w.get(t)! : 0), 0) / wTotal;
-    if (sc === 0) return { c, sc: 0 };
+    if (sc === 0 || (keys.length && !keys.some((t) => has(c.toks, t)))) return { c, sc: 0 };
     if (numeric && /\d/.test(c.s)) sc += 0.08;
     if (!opts.scan) sc += chunks[c.ci].score * 0.05 - c.ci * 0.02;
     if (!qT.some((t) => has(c.own, t))) sc -= 0.15; // matched only through the section heading
