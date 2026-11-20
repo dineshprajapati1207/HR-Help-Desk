@@ -1,5 +1,5 @@
 export type ContactPerson = { name: string; email: string; mobile: string };
-export type PolicyContact = { people: ContactPerson[]; message?: undefined } | { message: string; people?: undefined };
+export type PolicyContact = { people: ContactPerson[]; message?: undefined; email?: undefined; greeting?: undefined } | { message: string; email: string; greeting: string; people?: undefined };
 
 /** Who employees should contact for specific policies (Contact HR tab). Every other policy uses the default HR contact. */
 const RULES: { test: RegExp; contact: PolicyContact }[] = [
@@ -7,7 +7,7 @@ const RULES: { test: RegExp; contact: PolicyContact }[] = [
     { name: "Hitanshi Thakkar", email: "hitanshi.thakkar@petpooja.com", mobile: "7486906203" },
     { name: "Mittal Prajapati", email: "mittal.prajapati@petpooja.com", mobile: "8155091116" },
   ] } },
-  { test: /posh/i, contact: { message: "For any queries or concerns, please contact the Presiding Officer or IC Team Members." } },
+  { test: /posh/i, contact: { message: "For any queries or concerns, please contact the Presiding Officer or IC Team Members at email id -", email: "icc@petpooja.com", greeting: "Dear Presiding Officer and IC Team Members," } },
   { test: /separation/i, contact: { people: [{ name: "Yogita", email: "yogita.m@petpooja.com", mobile: "8511834515" }] } },
   { test: /internship/i, contact: { people: [{ name: "Hemaxi Vagadiya", email: "hemaxi.vagadiya@petpooja.com", mobile: "8866121036" }] } },
 ];

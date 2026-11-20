@@ -59,8 +59,7 @@ export default function ContactHR() {
   // who to contact depends on the selected policy; every other policy uses the default HR contact
   const special = policyContact(f.policy);
   const people: ContactPerson[] = special?.people ?? [defaultContact];
-  const noEmail = !!special?.message; // e.g. POSH: no named person, only a message
-  const recipients = noEmail ? defaultContact.email : people.map((p) => p.email).join(", ");
+  const recipients = special?.message ? special.email : people.map((p) => p.email).join(", ");
 
   const set = (k: keyof Form) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setF({ ...f, [k]: e.target.value });
@@ -75,7 +74,7 @@ export default function ContactHR() {
     setMissing(need);
     if (need.length) return;
     setBusy(true);
-    const greeting = special?.people ? greetingFor(people) : "Dear HR Team,";
+    const greeting = special?.message ? special.greeting : special?.people ? greetingFor(people) : "Dear HR Team,";
     try {
       const r = await draftEmail({ name: f.name, employee_id: f.employee_id, department: f.department, topic: f.policy, subject: f.subject, concern: f.concern, details: f.details, tone: "Professional", regenerate });
       setOut({ subject: r.subject, body: r.body.replace(/^Dear[^\n]*,/, greeting), to: recipients });
@@ -90,7 +89,7 @@ export default function ContactHR() {
     <div className="max-w-[760px] space-y-5">
       <h1 className="text-xl font-extrabold">Contact HR</h1>
       <Card className="p-4 text-sm space-y-3">
-        {special?.message ? <p className="font-semibold">{special.message}</p> : people.map((p, i) => (
+        {special?.message ? <p className="font-semibold">{special.message} <a className="text-sky-700 underline" href={`mailto:${special.email}`}>{special.email}</a></p> : people.map((p, i) => (
           <div key={i} className={i > 0 ? "pt-3 border-t border-slate-100 space-y-1" : "space-y-1"}>
             <p><b>Contact Person:</b> {p.name}</p>
             <p><b>Email:</b> <a className="text-sky-700 underline" href={`mailto:${p.email}`}>{p.email}</a></p>
